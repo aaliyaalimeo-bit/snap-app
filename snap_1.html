@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNAP.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #fdeaf5;
+    --pink-hot: #ff2ea6;
+    --pink-soft: #ff8fd6;
+    --pink-pale: #ffc9ec;
+    --lavender: #caa4ff;
+    --ink: #fff0fa;
+    --dim: rgba(255,240,250,0.55);
+    --card: rgba(20, 4, 26, 0.55);
+    --line: rgba(255, 143, 214, 0.25);
+    --ink-onlight: #5a0e3c;
+    --dim-onlight: rgba(90,14,60,0.6);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--bg); color:var(--ink);
+    font-family:'Inter',sans-serif;
+    overflow:hidden;
+  }
+  #app{
+    position:relative; width:100vw; height:100vh; overflow:hidden;
+  }
+  #video{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover;
+    transform:scaleX(-1);
+    opacity:0;
+    transition:opacity 0.8s ease;
+  }
+  #video.on{ opacity:1; }
+  #tint{
+    display:none;
+  }
+  #fx{
+    position:absolute; inset:0; width:100%; height:100%;
+    pointer-events:none;
+  }
+  .ui{
+    position:absolute; inset:0; pointer-events:none;
+    display:flex; flex-direction:column; justify-content:space-between;
+    padding: clamp(16px, 3vw, 36px);
+  }
+  .topbar{
+    display:flex; justify-content:space-between; align-items:flex-start;
+  }
+  .brand{
+    font-family:'Unbounded', sans-serif;
+    font-weight:800;
+    font-size: clamp(20px, 3vw, 30px);
+    letter-spacing:0.02em;
+    padding: 6px 14px;
+    border-radius:100px;
+    background: rgba(20,4,26,0.55);
+    backdrop-filter:blur(6px);
+    color:#fff0fa;
+    text-shadow: 0 0 18px rgba(255,46,166,0.55);
+  }
+  .brand span{ color:var(--pink-hot); }
+  .status-row{
+    display:flex; flex-direction:column; align-items:flex-end; gap:8px;
+  }
+  .pill{
+    pointer-events:auto;
+    font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
+    padding:7px 14px; border-radius:100px;
+    border:1px solid var(--line);
+    background:rgba(20,4,26,0.5);
+    backdrop-filter:blur(6px);
+    color:var(--dim);
+    display:flex; align-items:center; gap:8px;
+    transition:color 0.3s ease, border-color 0.3s ease;
+  }
+  .pill .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: #ff5a5a;
+    box-shadow:0 0 8px #ff5a5a;
+    transition:all 0.3s ease;
+  }
+  .pill.live{ color:var(--pink-pale); border-color:rgba(255,143,214,0.5); }
+  .pill.live .dot{ background:#5aff9e; box-shadow:0 0 8px #5aff9e; }
+  .counter{
+    font-family:'Unbounded', sans-serif;
+    font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
+    color:#fff0fa;
+    background: rgba(20,4,26,0.5);
+    backdrop-filter:blur(6px);
+    padding:6px 14px;
+    border-radius:100px;
+  }
+  .counter b{
+    color:var(--pink-soft); font-size:15px;
+  }
+
+  .center-wrap{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    pointer-events:none;
+  }
+  .card{
+    pointer-events:auto;
+    max-width: 420px;
+    text-align:center;
+    background:var(--card);
+    border:1px solid var(--line);
+    backdrop-filter:blur(14px);
+    border-radius:24px;
+    padding: clamp(24px,4vw,40px) clamp(20px,4vw,32px);
+    box-shadow: 0 20px 60px rgba(255,46,166,0.12), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .card h1{
+    font-family:'Unbounded', sans-serif;
+    font-weight:800;
+    font-size: clamp(26px, 4vw, 34px);
+    margin: 0 0 12px 0;
+    line-height:1.1;
+    background: linear-gradient(135deg, var(--pink-pale), var(--pink-hot) 60%, var(--lavender));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .card p{
+    margin:0 0 22px 0;
+    color:var(--dim);
+    font-size:14.5px; line-height:1.55;
+  }
+  button#startBtn{
+    font-family:'Unbounded', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:0.02em;
+    color:#1a0114;
+    background: linear-gradient(135deg, var(--pink-pale), var(--pink-hot));
+    border:none; border-radius:100px;
+    padding:14px 30px;
+    cursor:pointer;
+    box-shadow:0 10px 30px rgba(255,46,166,0.35);
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  button#startBtn:hover{ transform:translateY(-2px); box-shadow:0 14px 36px rgba(255,46,166,0.5); }
+  button#startBtn:active{ transform:translateY(0px) scale(0.98); }
+  .fine{
+    margin-top:16px; font-size:11.5px; color:rgba(255,240,250,0.4);
+  }
+
+  .footer{
+    align-self:center;
+    text-align:center;
+    font-size:13px;
+    color:#fff0fa;
+    letter-spacing:0.01em;
+    pointer-events:none;
+    background: rgba(20,4,26,0.5);
+    backdrop-filter:blur(6px);
+    padding:8px 18px;
+    border-radius:100px;
+    display:inline-block;
+    margin:0 auto;
+  }
+  .footer b{ color:var(--pink-soft); font-weight:600; }
+
+  @media (max-width: 520px){
+    .status-row{ align-items:flex-end; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <video id="video" playsinline muted></video>
+  <div id="tint"></div>
+  <canvas id="fx"></canvas>
+
+  <div class="ui">
+    <div class="topbar">
+      <div class="brand">SNAP<span>.</span></div>
+      <div class="status-row">
+        <div class="pill" id="statusPill"><span class="dot"></span><span id="statusText">camera off</span></div>
+        <div class="counter" id="counter"><b>0</b> snaps</div>
+      </div>
+    </div>
+
+    <div class="footer" id="footer" style="display:none">
+      pinch your <b>thumb + middle finger</b>, then flick — that's a snap ✨
+    </div>
+  </div>
+
+  <div class="center-wrap" id="centerWrap">
+    <div class="card">
+      <h1>Snap for pink</h1>
+      <p>Give this a look at your camera, hold up one hand, and snap your fingers. Pink ribbons fall out of nowhere.</p>
+      <button id="startBtn">Turn on camera</button>
+      <div class="fine">Nothing is recorded or uploaded — the video never leaves your browser.</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+<script>
+(function(){
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('fx');
+  const ctx = canvas.getContext('2d');
+  const startBtn = document.getElementById('startBtn');
+  const centerWrap = document.getElementById('centerWrap');
+  const statusPill = document.getElementById('statusPill');
+  const statusText = document.getElementById('statusText');
+  const footer = document.getElementById('footer');
+  const counterEl = document.getElementById('counter');
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+  function resize(){
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- state ----------
+  let snapCount = 0;
+  let latestLandmarks = null;
+  let handPresent = false;
+  let handState = 'idle'; // idle -> contact -> cooldown
+  let contactTime = 0;
+  let lastSnapTime = -9999;
+
+  const CONTACT_D = 0.42;   // thumb-middle distance (scaled by hand size) counted as "pinched"
+  const RELEASE_D = 0.95;   // distance that counts as "flicked open"
+  const CONTACT_WINDOW = 420; // ms allowed between pinch and flick
+  const SNAP_COOLDOWN = 550;  // ms between snaps
+
+  const ribbons = [];
+  const flashes = [];
+  const MAX_RIBBONS = reducedMotion ? 90 : 260;
+
+  const PINKS = ['#ff2ea6', '#ff6fd8', '#ff9be0', '#e08bff', '#ffc9ec'];
+
+  const HAND_CONNECTIONS = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],
+    [0,17]
+  ];
+
+  function dist(a,b){
+    const dx = a.x-b.x, dy = a.y-b.y;
+    return Math.sqrt(dx*dx+dy*dy);
+  }
+
+  function rand(min,max){ return min + Math.random()*(max-min); }
+  function pick(arr){ return arr[(Math.random()*arr.length)|0]; }
+
+  // ---------- ribbon particles ----------
+  function spawnRibbon(x, y, opts){
+    opts = opts || {};
+    if (ribbons.length > MAX_RIBBONS) ribbons.shift();
+    ribbons.push({
+      x, y,
+      vx: opts.vx !== undefined ? opts.vx : rand(-40,40),
+      vy: opts.vy !== undefined ? opts.vy : rand(-30, 60),
+      gravity: rand(140, 220),
+      rot: rand(0, Math.PI*2),
+      vrot: rand(-4, 4),
+      swayPhase: rand(0, Math.PI*2),
+      swayFreq: rand(1.4, 2.6),
+      swayAmp: rand(18, 46),
+      len: rand(16, 30),
+      width: rand(5, 8),
+      color: pick(PINKS),
+      life: 0,
+      maxLife: rand(2.2, 3.6),
+      fadeIn: opts.fadeIn !== undefined ? opts.fadeIn : 0.06
+    });
+  }
+
+  function burstAt(x, y, count){
+    for (let i=0;i<count;i++){
+      const ang = rand(0, Math.PI*2);
+      const speed = rand(120, 420);
+      spawnRibbon(x, y, {
+        vx: Math.cos(ang)*speed,
+        vy: Math.sin(ang)*speed - 80,
+        fadeIn: 0
+      });
+    }
+  }
+
+  function rainFrom(x){
+    // staggered rain across the top of the screen, biased near x
+    const total = reducedMotion ? 26 : 70;
+    let spawned = 0;
+    const interval = setInterval(()=>{
+      const spread = W * 0.9;
+      const sx = Math.max(10, Math.min(W-10, x + rand(-spread/2, spread/2)));
+      spawnRibbon(sx, -20, { vx: rand(-20,20), vy: rand(20,60) });
+      spawned++;
+      if (spawned >= total) clearInterval(interval);
+    }, reducedMotion ? 40 : 18);
+  }
+
+  function spawnFlash(x,y){
+    flashes.push({ x, y, r: 0, alpha: 1, maxR: Math.max(W,H)*0.5 });
+  }
+
+  // tiny synthesized "boom" — no external audio files
+  let audioCtx;
+  function playBoom(){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(340, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.25);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.35, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.4);
+
+      const bufferSize = audioCtx.sampleRate * 0.12;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i=0;i<bufferSize;i++){ data[i] = (Math.random()*2-1) * (1 - i/bufferSize); }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.18, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      noise.connect(noiseGain).connect(audioCtx.destination);
+      noise.start(now);
+    }catch(e){ /* audio not available, ignore */ }
+  }
+
+  function triggerSnap(px, py){
+    snapCount++;
+    counterEl.innerHTML = '<b>' + snapCount + '</b> snap' + (snapCount===1?'':'s');
+    spawnFlash(px, py);
+    burstAt(px, py, reducedMotion ? 16 : 36);
+    rainFrom(px);
+    playBoom();
+  }
+
+  // ---------- draw loop ----------
+  let lastT = performance.now();
+  function loop(t){
+    const dt = Math.min((t - lastT)/1000, 0.05);
+    lastT = t;
+
+    ctx.clearRect(0,0,W,H);
+
+    // hand skeleton (mirrored to match video)
+    if (latestLandmarks && handPresent){
+      ctx.save();
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,143,214,0.55)';
+      ctx.shadowColor = 'rgba(255,46,166,0.6)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      HAND_CONNECTIONS.forEach(([a,b])=>{
+        const p1 = latestLandmarks[a], p2 = latestLandmarks[b];
+        ctx.moveTo(p1.x*W, p1.y*H);
+        ctx.lineTo(p2.x*W, p2.y*H);
+      });
+      ctx.stroke();
+
+      latestLandmarks.forEach((p, i)=>{
+        const isTip = [4,8,12,16,20].includes(i);
+        ctx.beginPath();
+        ctx.fillStyle = isTip ? '#ffd6f2' : 'rgba(255,143,214,0.7)';
+        ctx.shadowBlur = isTip ? 14 : 4;
+        ctx.arc(p.x*W, p.y*H, isTip ? 4.5 : 2.6, 0, Math.PI*2);
+        ctx.fill();
+      });
+
+      // pinch indicator glow between thumb tip and middle tip
+      const t4 = latestLandmarks[4], t12 = latestLandmarks[12];
+      const mx = (t4.x+t12.x)/2*W, my=(t4.y+t12.y)/2*H;
+      const wrist = latestLandmarks[0], mcp = latestLandmarks[9];
+      const handSize = dist(wrist, mcp) || 0.001;
+      const dNow = dist(t4, t12) / handSize;
+      const closeness = Math.max(0, 1 - Math.min(dNow / CONTACT_D, 1.4));
+      if (closeness > 0.05){
+        const g = ctx.createRadialGradient(mx,my,0,mx,my,40+closeness*30);
+        g.addColorStop(0, 'rgba(255,143,214,'+(0.5*closeness)+')');
+        g.addColorStop(1, 'rgba(255,143,214,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(mx,my,40+closeness*30,0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // flashes (boom) — already in mirrored screen coords, no transform needed
+    for (let i = flashes.length-1; i>=0; i--){
+      const f = flashes[i];
+      f.r += (reducedMotion ? 900 : 1400) * dt;
+      f.alpha -= dt * 1.8;
+      if (f.alpha <= 0 || f.r > f.maxR){ flashes.splice(i,1); continue; }
+      const g = ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);
+      g.addColorStop(0, 'rgba(255,240,250,'+(0.55*f.alpha)+')');
+      g.addColorStop(0.35, 'rgba(255,46,166,'+(0.35*f.alpha)+')');
+      g.addColorStop(1, 'rgba(255,46,166,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    // ribbons
+    for (let i = ribbons.length-1; i>=0; i--){
+      const r = ribbons[i];
+      r.life += dt;
+      if (r.life > r.maxLife || r.y > H + 60){ ribbons.splice(i,1); continue; }
+
+      r.vy += r.gravity * dt;
+      r.swayPhase += dt * r.swayFreq;
+      r.x += r.vx*dt + Math.sin(r.swayPhase)*r.swayAmp*dt;
+      r.y += r.vy*dt;
+      r.rot += r.vrot*dt;
+      r.vx *= (1 - dt*0.6);
+
+      let alpha = 1;
+      const fadeInT = r.fadeIn;
+      if (r.life < fadeInT) alpha = r.life / Math.max(fadeInT, 0.001);
+      const fadeOutStart = r.maxLife * 0.7;
+      if (r.life > fadeOutStart) alpha *= Math.max(0, 1 - (r.life-fadeOutStart)/(r.maxLife-fadeOutStart));
+
+      ctx.save();
+      ctx.translate(r.x, r.y);
+      ctx.rotate(r.rot);
+      ctx.globalAlpha = Math.max(0, Math.min(1,alpha));
+      ctx.fillStyle = r.color;
+      ctx.shadowColor = r.color;
+      ctx.shadowBlur = 6;
+      const rad = r.width/2;
+      ctx.beginPath();
+      ctx.moveTo(-r.len/2+rad, -r.width/2);
+      ctx.lineTo(r.len/2-rad, -r.width/2);
+      ctx.quadraticCurveTo(r.len/2, -r.width/2, r.len/2, 0);
+      ctx.quadraticCurveTo(r.len/2, r.width/2, r.len/2-rad, r.width/2);
+      ctx.lineTo(-r.len/2+rad, r.width/2);
+      ctx.quadraticCurveTo(-r.len/2, r.width/2, -r.len/2, 0);
+      ctx.quadraticCurveTo(-r.len/2, -r.width/2, -r.len/2+rad, -r.width/2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---------- gesture logic ----------
+  function onResults(results){
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0){
+      latestLandmarks = results.multiHandLandmarks[0];
+      if (!handPresent){
+        handPresent = true;
+        statusPill.classList.add('live');
+        statusText.textContent = 'hand detected';
+      }
+
+      const t4 = latestLandmarks[4], t12 = latestLandmarks[12];
+      const wrist = latestLandmarks[0], mcp = latestLandmarks[9];
+      const handSize = dist(wrist, mcp) || 0.001;
+      const d = dist(t4, t12) / handSize;
+      const now = performance.now();
+
+      if (handState === 'idle'){
+        if (d < CONTACT_D){
+          handState = 'contact';
+          contactTime = now;
+        }
+      } else if (handState === 'contact'){
+        if (d > RELEASE_D && (now - contactTime) < CONTACT_WINDOW && (now - lastSnapTime) > SNAP_COOLDOWN){
+          const mx = (t4.x+t12.x)/2, my=(t4.y+t12.y)/2;
+          const px = (1-mx) * W; // mirrored
+          const py = my * H;
+          triggerSnap(px, py);
+          lastSnapTime = now;
+          handState = 'cooldown';
+          setTimeout(()=>{ handState = 'idle'; }, 250);
+        } else if ((now - contactTime) > 650){
+          handState = 'idle';
+        }
+      }
+    } else {
+      latestLandmarks = null;
+      if (handPresent){
+        handPresent = false;
+        statusPill.classList.remove('live');
+        statusText.textContent = 'show a hand to the camera';
+      }
+      handState = 'idle';
+    }
+  }
+
+  // ---------- camera bootstrap ----------
+  let hands, mpCamera;
+
+  function preflightMessage(){
+    const isSecure = window.isSecureContext;
+    const isLocalFile = location.protocol === 'file:';
+    const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+    if (isLocalFile){
+      return "You're opening this straight from disk (file://), and browsers block camera access there. Fix: run a tiny local server instead — open a terminal in this file's folder and run `python3 -m http.server 8000`, then visit http://localhost:8000/snap.html. Or drag the file into a Claude Code / Claude Design preview, or upload it to any static host.";
+    }
+    if (!isSecure){
+      return "This page isn't running in a secure context (https or localhost), so the browser is blocking camera access. Serve it over https or from localhost.";
+    }
+    if (!hasMediaDevices){
+      return "This browser doesn't expose a camera API here (navigator.mediaDevices is missing). Try a recent Chrome, Edge, or Firefox, and make sure no browser flag/extension is disabling camera APIs.";
+    }
+    return null;
+  }
+
+  async function start(){
+    const preflight = preflightMessage();
+    if (preflight){
+      statusText.textContent = 'camera blocked';
+      const card = document.querySelector('.card p');
+      card.textContent = preflight;
+      return;
+    }
+
+    startBtn.disabled = true;
+    startBtn.textContent = 'starting…';
+    statusText.textContent = 'requesting camera…';
+
+    try{
+      hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.6
+      });
+      hands.onResults(onResults);
+
+      mpCamera = new Camera(video, {
+        onFrame: async () => { await hands.send({ image: video }); },
+        width: 640,
+        height: 480
+      });
+
+      await mpCamera.start();
+      video.classList.add('on');
+      centerWrap.style.display = 'none';
+      footer.style.display = 'block';
+      statusText.textContent = 'show a hand to the camera';
+    } catch(err){
+      startBtn.disabled = false;
+      startBtn.textContent = 'Turn on camera';
+      statusText.textContent = 'camera blocked';
+      const card = document.querySelector('.card p');
+      const name = err && err.name ? err.name : '';
+      let msg;
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError'){
+        msg = "Camera permission was denied. Click the camera/lock icon in your browser's address bar, allow camera access for this page, then hit the button again.";
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError'){
+        msg = "No camera was found. Make sure one is connected/enabled, and that no other app has it locked.";
+      } else if (name === 'NotReadableError' || name === 'TrackStartError'){
+        msg = "The camera is already in use by another app or tab. Close whatever else might be using it and try again.";
+      } else {
+        msg = "Couldn't get camera access (" + (err && err.message ? err.message : 'unknown error') + "). Check your browser's site permissions and try again.";
+      }
+      card.textContent = msg;
+    }
+  }
+
+  startBtn.addEventListener('click', start);
+})();
+</script>
+</body>
+</html>
